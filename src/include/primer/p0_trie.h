@@ -265,7 +265,6 @@ class Trie {
   }
 
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Insert key-value pair into the trie.
    *
@@ -298,13 +297,39 @@ class Trie {
     }
 
     TrieNode *tmp = root_.get();
-    for (auto& c: key) {
+    int index = 0;
+
+    // Iterate till second last element of key a
+    for (char& c: key) {
+      if (index == key.size() - 1) {
+        break;
+      }
+
       if (tmp->HasChild(c)) {
         tmp = tmp->GetChildNode(c)->get();
       } else {
-        // Create the child node
         tmp = tmp->InsertChildNode(c, std::make_unique<TrieNode>(c))->get();
       }
+
+      index++;
+    }
+
+    // Now we are at last element of key. Figure out if child already exist and if it is terminal.
+    char last_char = key.at(index);
+    if (tmp->HasChild(last_char)) {
+      TrieNode* childNode = tmp->GetChildNode(last_char)->get();
+
+      if (childNode->IsEndNode()) {
+        return false;
+      } else {
+        // Convert this childNode to TrieNodeWithValue and insert it as a child of tmp
+        tmp->InsertChildNode(last_char, std::make_unique<TrieNodeWithValue<T>>(childNode, value));
+        return true;
+      }
+
+    } else {
+      tmp->InsertChildNode(c, std::make_unique<TrieNodeWithValue<T>>(c, value))->get();
+      return true;
     }
 
     return false;
