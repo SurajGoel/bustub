@@ -30,7 +30,6 @@ namespace bustub {
 class TrieNode {
  public:
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Construct a new Trie Node object with the given key char.
    * is_end_ flag should be initialized to false in this constructor.
@@ -38,11 +37,11 @@ class TrieNode {
    * @param key_char Key character of this trie node
    */
   explicit TrieNode(char key_char) {
-
+    key_char_ = key_char;
+    is_end_ = false;
   }
 
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Move constructor for trie node object. The unique pointers stored
    * in children_ should be moved from other_trie_node to new trie node.
@@ -50,7 +49,11 @@ class TrieNode {
    * @param other_trie_node Old trie node.
    */
   TrieNode(TrieNode &&other_trie_node) noexcept {
+    key_char_ = other_trie_node.key_char_;
 
+    for (auto& node : other_trie_node.children_) {
+      children_[node.first] = std::move(node.second);
+    }
   }
 
   /**
@@ -99,7 +102,6 @@ class TrieNode {
   }
 
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Insert a child node for this trie node into children_ map, given the key char and
    * unique_ptr of the child node. If specified key_char already exists in children_,
@@ -119,9 +121,12 @@ class TrieNode {
    */
   std::unique_ptr<TrieNode> *InsertChildNode(char key_char, std::unique_ptr<TrieNode> &&child) {
 
+    if (HasChild(key_char) || child->key_char_ != key_char) {
+      return nullptr;
+    }
 
-    return nullptr;
-
+    children_[key_char] = std::move(child);
+    return &children_[key_char];
   }
 
   /**
@@ -140,14 +145,20 @@ class TrieNode {
   }
 
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Remove child node from children_ map.
    * If key_char does not exist in children_, return immediately.
    *
    * @param key_char Key char of child node to be removed
    */
-  void RemoveChildNode(char key_char) {}
+  void RemoveChildNode(char key_char) {
+
+    if (!HasChild(key_char)) {
+      return;
+    }
+
+    children_.erase(key_char);
+  }
 
   /**
    *
@@ -181,7 +192,6 @@ class TrieNodeWithValue : public TrieNode {
 
  public:
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Construct a new TrieNodeWithValue object from a TrieNode object and specify its value.
    * This is used when a non-terminal TrieNode is converted to terminal TrieNodeWithValue.
@@ -198,10 +208,12 @@ class TrieNodeWithValue : public TrieNode {
    * @param trieNode TrieNode whose data is to be moved to TrieNodeWithValue
    * @param value
    */
-  TrieNodeWithValue(TrieNode &&trieNode, T value) {}
+  TrieNodeWithValue(TrieNode &&trieNode, T value) : TrieNode(std::move(trieNode)) {
+    value_ = value;
+    SetEndNode(true);
+  }
 
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Construct a new TrieNodeWithValue. This is used when a new terminal node is constructed.
    *
@@ -213,7 +225,10 @@ class TrieNodeWithValue : public TrieNode {
    * @param key_char Key char of this node
    * @param value Value of this node
    */
-  TrieNodeWithValue(char key_char, T value) {}
+  TrieNodeWithValue(char key_char, T value) : TrieNode(key_char) {
+    value_ = value;
+    SetEndNode(true);
+  }
 
   /**
    * @brief Destroy the Trie Node With Value object
@@ -241,12 +256,13 @@ class Trie {
 
  public:
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Construct a new Trie object. Initialize the root node with '\0'
    * character.
    */
-  Trie() = default;
+  Trie() {
+    root_ = std::make_unique<TrieNode>('\0');
+  }
 
   /**
    * TODO(P0): Add implementation
@@ -276,6 +292,21 @@ class Trie {
    */
   template <typename T>
   bool Insert(const std::string &key, T value) {
+
+    if (key.empty()) {
+      return false;
+    }
+
+    TrieNode *tmp = root_.get();
+    for (auto& c: key) {
+      if (tmp->HasChild(c)) {
+        tmp = tmp->GetChildNode(c)->get();
+      } else {
+        // Create the child node
+        tmp = tmp->InsertChildNode(c, std::make_unique<TrieNode>(c))->get();
+      }
+    }
+
     return false;
   }
 
