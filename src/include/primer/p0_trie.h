@@ -297,10 +297,10 @@ class Trie {
     }
 
     TrieNode *tmp = root_.get();
-    int index = 0;
+    uint64_t index = 0;
 
     // Iterate till second last element of key a
-    for (char& c: key) {
+    for (auto& c: key) {
       if (index == key.size() - 1) {
         break;
       }
@@ -317,22 +317,19 @@ class Trie {
     // Now we are at last element of key. Figure out if child already exist and if it is terminal.
     char last_char = key.at(index);
     if (tmp->HasChild(last_char)) {
-      TrieNode* childNode = tmp->GetChildNode(last_char)->get();
+      TrieNode* child_node = tmp->GetChildNode(last_char)->get();
 
-      if (childNode->IsEndNode()) {
+      if (child_node->IsEndNode()) {
         return false;
-      } else {
-        // Convert this childNode to TrieNodeWithValue and insert it as a child of tmp
-        tmp->InsertChildNode(last_char, std::make_unique<TrieNodeWithValue<T>>(childNode, value));
-        return true;
       }
 
-    } else {
-      tmp->InsertChildNode(c, std::make_unique<TrieNodeWithValue<T>>(c, value))->get();
+      // Convert this child_node to TrieNodeWithValue and insert it as a child of tmp
+      tmp->InsertChildNode(last_char, std::make_unique<TrieNodeWithValue<T>>(child_node, value));
       return true;
     }
 
-    return false;
+    tmp->InsertChildNode(last_char, std::make_unique<TrieNodeWithValue<T>>(last_char, value))->get();
+    return true;
   }
 
   /**
@@ -355,7 +352,6 @@ class Trie {
   bool Remove(const std::string &key) { return false; }
 
   /**
-   * TODO(P0): Add implementation
    *
    * @brief Get the corresponding value of type T given its key.
    * If key is empty, set success to false.
@@ -374,7 +370,26 @@ class Trie {
    */
   template <typename T>
   T GetValue(const std::string &key, bool *success) {
+
     *success = false;
+    TrieNode* tmp = root_.get();
+
+    for (auto& c : key) {
+      if (!tmp->HasChild(c)) {
+        return {};
+      }
+
+      tmp = tmp->GetChildNode(c)->get();
+    }
+
+    if (tmp->IsEndNode()) {
+      auto node_with_value = dynamic_cast<TrieNodeWithValue<T>>(tmp);
+      if ( node_with_value != nullptr) {
+        *success = true;
+        return node_with_value.GetValue();
+      }
+    }
+
     return {};
   }
 };
