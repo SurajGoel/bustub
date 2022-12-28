@@ -370,10 +370,11 @@ class Trie {
 
     // Traverse to the end of this key
     TrieNode* tmp = root_.get();
+    node_stack.push(tmp);
     for (auto& c: key) {
-        node_stack.push(tmp);
       if (tmp->HasChild(c)) {
         tmp = tmp->GetChildNode(c)->get();
+        node_stack.push(tmp);
       } else {
         latch_.WUnlock();
         return false;
@@ -402,9 +403,10 @@ class Trie {
       node_stack.pop();
       LOG_DEBUG("Parent node %c", parent_node->GetKeyChar());
 
-      if (!child_node->HasChildren()) {
-        free(child_node);
+      if (!child_node->HasChildren() && !child_node->IsEndNode()) {
         parent_node->RemoveChildNode(child_node->GetKeyChar());
+      } else {
+        break;
       }
 
       child_node = parent_node;
@@ -448,7 +450,7 @@ class Trie {
     }
 
     if (tmp->IsEndNode()) {
-      TrieNodeWithValue<T>* node_with_value = dynamic_cast<TrieNodeWithValue<T>*>(tmp);
+      auto* node_with_value = dynamic_cast<TrieNodeWithValue<T>*>(tmp);
       if ( node_with_value != nullptr) {
         *success = true;
         latch_.RUnlock();
