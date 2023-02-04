@@ -100,6 +100,7 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
 
   if (!bucket->IsFull()) {
     bucket->Insert(key, value);
+    return;
   }
 
   V new_val;
@@ -132,12 +133,17 @@ void ExtendibleHashTable<K, V>::SplitBucket(std::shared_ptr<Bucket> bucket, size
   auto cur_key_hash_incremented_depth_bit = cur_key_hash & incremented_depth_bit_mask;
   std::shared_ptr<Bucket> new_bucket = std::make_shared<Bucket>(bucket_size_, bucket->GetDepth()+1);
 
+  std::list<K> removal_list;
   for (std::pair<K, V>& item : bucket->GetItems()) {
     // Arrange elements separately according to their incremented depth bit
     if ((std::hash<K>()(item.first) & incremented_depth_bit_mask) != cur_key_hash_incremented_depth_bit) {
       new_bucket->Insert(item.first, item.second);
-      bucket->Remove(item.first);
+      removal_list.push_back(item.first);
     }
+  }
+
+  for (auto remove_k : removal_list) {
+    bucket->Remove(remove_k);
   }
 
   // Now see what are all the indexes in directory where this bucket was being pointed at
