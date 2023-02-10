@@ -63,6 +63,11 @@ auto ExtendibleHashTable<K, V>::GetLocalDepthInternal(int dir_index) const -> in
 }
 
 template <typename K, typename V>
+void ExtendibleHashTable<K, V>::IncrementGlobalDepthInternal() {
+  global_depth_++;
+}
+
+template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetNumBuckets() const -> int {
   std::scoped_lock<std::mutex> lock(latch_);
   return GetNumBucketsInternal();
@@ -110,18 +115,15 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
   }
 
   if (bucket->GetDepth() == this->GetGlobalDepthInternal()) {
-
-    // First you have to increase the global depth, and then split using the same method, with the bucket that will overflow, and then Insert again !!
-    // Double the size, for the new added dir index add them to an existing bucket and then split the bucket in the normal manner !!
     size_t prev_size = dir_.size();
     dir_.resize(dir_.size()*2);
     for (size_t i=0 ; i < prev_size ; i++) {
       dir_[i+prev_size] = dir_[i];
     }
-
+    IncrementGlobalDepthInternal();
   }
-  SplitBucket(bucket, dir_index);
 
+  SplitBucket(bucket, dir_index);
   this->InsertInternal(key, value);
 }
 
@@ -147,8 +149,11 @@ void ExtendibleHashTable<K, V>::SplitBucket(std::shared_ptr<Bucket> bucket, size
   }
 
   // Now see what are all the indexes in directory where this bucket was being pointed at
-  for (int i=0 ; i <= (1 << (this->GetGlobalDepth() - bucket->GetDepth())) - 1 ; i++) {
-    size_t idx = (i << bucket->GetDepth()) | (dir_index & (1 << (bucket->GetDepth() - 1)) );
+  // Find a little smarter way to do this !!! And you will good to go then !!!
+  for (int i=0 ; i <= (1 << (GetGlobalDepthInternal() - bucket->GetDepth())) - 1 ; i++) {
+    size_t idx = (i == 0) ? (dir_index & ( (1 << bucket->GetDepth()) - 1) ) :
+                        ( (i << bucket->GetDepth()) | (dir_index & ( (1 << bucket->GetDepth()) - 1) ) );
+
     if ( (idx & incremented_depth_bit_mask) == cur_key_hash_incremented_depth_bit ) {
       dir_[idx] = bucket;
     } else {

@@ -14,9 +14,12 @@
 
 #include <limits>
 #include <list>
+#include <memory>
 #include <mutex>  // NOLINT
-#include <unordered_map>
+#include <queue>
 #include <vector>
+#include <set>
+#include <unordered_map>
 
 #include "common/config.h"
 #include "common/macros.h"
@@ -133,13 +136,74 @@ class LRUKReplacer {
   auto Size() -> size_t;
 
  private:
+
+  class FrameAccessHistory {
+   public:
+    explicit FrameAccessHistory(frame_id_t frame_id, size_t look_back_size) : look_back_size_(look_back_size), frame_id_(frame_id) {}
+    void RecordAccess();
+    inline auto GetAccessHistorySize() -> size_t {return access_history_.size();}
+    inline auto GetLookBackSize() -> size_t {return look_back_size_;}
+    inline auto GetKthAccessRecord() -> int64_t { return access_history_.back();}
+    inline auto GetLRUAccessRecord() -> int64_t  {return access_history_.front();}
+    inline auto GetFrameId() -> frame_id_t {return frame_id_;}
+    inline auto SetEvictable(bool evictable) -> void {is_evictable_ = evictable;}
+    inline auto IsEvictable() -> bool {return is_evictable_;}
+   private:
+    bool is_evictable_;
+    size_t look_back_size_;
+    frame_id_t frame_id_;
+    std::list<int64_t> access_history_;
+    std::mutex frame_latch_;
+  };
+
+  class FrameAccessHistoryOrderComparison {
+   public:
+    auto operator() (const std::shared_ptr<FrameAccessHistory>& frame1,
+                    const std::shared_ptr<FrameAccessHistory>& frame2) const {
+      size_t frame1_size = frame1->GetAccessHistorySize();
+      size_t frame2_size = frame2->GetAccessHistorySize();
+
+      bool frame1_hist_available = frame1_size == frame1->GetLookBackSize();
+      bool frame2_hist_available = frame2_size == frame2->GetLookBackSize();
+      bool return_val = true;
+
+      if (frame1_hist_available && !frame2_hist_available) {
+        // retain frame1
+        return_val = false;
+      } else if (frame2_hist_available && !frame1_hist_available) {
+        // retain frame2
+        return_val = true;
+      } else if (!frame2_hist_available && !frame1_hist_available) {
+        // LRU case
+        return_val = frame1->GetLRUAccessRecord() <= frame2->GetLRUAccessRecord();
+      } else {
+        // Both frame's history is available
+        return_val = frame1->GetKthAccessRecord() <= frame2->GetKthAccessRecord();
+      }
+
+      return !return_val;
+    }
+  };
+
+  auto RemoveFrameFromSetInternal(frame_id_t frame_id) -> void ;
+
+//  class FrameAccessHistoryEqualityComparison {
+//   public:
+//    auto operator() (const std::shared_ptr<FrameAccessHistory>& frame1,
+//                    const std::shared_ptr<FrameAccessHistory>& frame2) const {
+//      return frame1->GetFrameId() == frame2->GetFrameId();
+//    }
+//  };
+
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
   [[maybe_unused]] size_t current_timestamp_{0};
   [[maybe_unused]] size_t curr_size_{0};
-  [[maybe_unused]] size_t replacer_size_;
-  [[maybe_unused]] size_t k_;
+  size_t replacer_size_;
+  size_t k_;
   std::mutex latch_;
+  std::unordered_map<frame_id_t, std::shared_ptr<FrameAccessHistory>> frame_index_map_;
+  std::set<std::shared_ptr<FrameAccessHistory>, FrameAccessHistoryOrderComparison> frame_history_set_;
 };
 
 }  // namespace bustub
