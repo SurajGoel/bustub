@@ -52,7 +52,6 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
       frame_history_set_.insert(frame->second);
     }
   }
-
 }
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
@@ -74,10 +73,10 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
     return;
   }
 
-  if(frame->second->IsEvictable()) {
+  if (frame->second->IsEvictable()) {
     RemoveFrameFromSetInternal(frame_id);
     frame_index_map_.erase(frame_id);
-    return ;
+    return;
   }
 
   exit(1);
@@ -88,7 +87,7 @@ auto LRUKReplacer::Size() -> size_t {
   return frame_history_set_.size();
 }
 auto LRUKReplacer::RemoveFrameFromSetInternal(frame_id_t frame_id) -> void {
-  auto find_frame = [frame_id](const std::shared_ptr<FrameAccessHistory>& fr) { return fr->GetFrameId() == frame_id; };
+  auto find_frame = [frame_id](const std::shared_ptr<FrameAccessHistory> &fr) { return fr->GetFrameId() == frame_id; };
   auto found_frame = std::find_if(frame_history_set_.begin(), frame_history_set_.end(), find_frame);
   if (found_frame != frame_history_set_.end()) {
     frame_history_set_.erase(found_frame);

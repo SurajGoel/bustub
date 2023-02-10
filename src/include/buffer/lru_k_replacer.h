@@ -17,9 +17,9 @@
 #include <memory>
 #include <mutex>  // NOLINT
 #include <queue>
-#include <vector>
 #include <set>
 #include <unordered_map>
+#include <vector>
 
 #include "common/config.h"
 #include "common/macros.h"
@@ -136,18 +136,19 @@ class LRUKReplacer {
   auto Size() -> size_t;
 
  private:
-
   class FrameAccessHistory {
    public:
-    explicit FrameAccessHistory(frame_id_t frame_id, size_t look_back_size) : look_back_size_(look_back_size), frame_id_(frame_id) {}
+    explicit FrameAccessHistory(frame_id_t frame_id, size_t look_back_size)
+        : look_back_size_(look_back_size), frame_id_(frame_id) {}
     void RecordAccess();
-    inline auto GetAccessHistorySize() -> size_t {return access_history_.size();}
-    inline auto GetLookBackSize() -> size_t {return look_back_size_;}
-    inline auto GetKthAccessRecord() -> int64_t { return access_history_.back();}
-    inline auto GetLRUAccessRecord() -> int64_t  {return access_history_.front();}
-    inline auto GetFrameId() -> frame_id_t {return frame_id_;}
-    inline auto SetEvictable(bool evictable) -> void {is_evictable_ = evictable;}
-    inline auto IsEvictable() -> bool {return is_evictable_;}
+    inline auto GetAccessHistorySize() -> size_t { return access_history_.size(); }
+    inline auto GetLookBackSize() -> size_t { return look_back_size_; }
+    inline auto GetKthAccessRecord() -> int64_t { return access_history_.back(); }
+    inline auto GetLRUAccessRecord() -> int64_t { return access_history_.front(); }
+    inline auto GetFrameId() -> frame_id_t { return frame_id_; }
+    inline auto SetEvictable(bool evictable) -> void { is_evictable_ = evictable; }
+    inline auto IsEvictable() -> bool { return is_evictable_; }
+
    private:
     bool is_evictable_;
     size_t look_back_size_;
@@ -158,8 +159,8 @@ class LRUKReplacer {
 
   class FrameAccessHistoryOrderComparison {
    public:
-    auto operator() (const std::shared_ptr<FrameAccessHistory>& frame1,
-                    const std::shared_ptr<FrameAccessHistory>& frame2) const {
+    auto operator()(const std::shared_ptr<FrameAccessHistory> &frame1,
+                    const std::shared_ptr<FrameAccessHistory> &frame2) const {
       size_t frame1_size = frame1->GetAccessHistorySize();
       size_t frame2_size = frame2->GetAccessHistorySize();
 
@@ -185,15 +186,15 @@ class LRUKReplacer {
     }
   };
 
-  auto RemoveFrameFromSetInternal(frame_id_t frame_id) -> void ;
+  auto RemoveFrameFromSetInternal(frame_id_t frame_id) -> void;
 
-//  class FrameAccessHistoryEqualityComparison {
-//   public:
-//    auto operator() (const std::shared_ptr<FrameAccessHistory>& frame1,
-//                    const std::shared_ptr<FrameAccessHistory>& frame2) const {
-//      return frame1->GetFrameId() == frame2->GetFrameId();
-//    }
-//  };
+  //  class FrameAccessHistoryEqualityComparison {
+  //   public:
+  //    auto operator() (const std::shared_ptr<FrameAccessHistory>& frame1,
+  //                    const std::shared_ptr<FrameAccessHistory>& frame2) const {
+  //      return frame1->GetFrameId() == frame2->GetFrameId();
+  //    }
+  //  };
 
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.

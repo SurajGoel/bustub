@@ -116,9 +116,9 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
 
   if (bucket->GetDepth() == this->GetGlobalDepthInternal()) {
     size_t prev_size = dir_.size();
-    dir_.resize(dir_.size()*2);
-    for (size_t i=0 ; i < prev_size ; i++) {
-      dir_[i+prev_size] = dir_[i];
+    dir_.resize(dir_.size() * 2);
+    for (size_t i = 0; i < prev_size; i++) {
+      dir_[i + prev_size] = dir_[i];
     }
     IncrementGlobalDepthInternal();
   }
@@ -129,14 +129,14 @@ void ExtendibleHashTable<K, V>::InsertInternal(const K &key, const V &value) {
 
 template <typename K, typename V>
 void ExtendibleHashTable<K, V>::SplitBucket(std::shared_ptr<Bucket> bucket, size_t dir_index) {
-  K& first_item = bucket->GetFirstItem();
+  K &first_item = bucket->GetFirstItem();
   size_t cur_key_hash = std::hash<K>()(first_item);
   auto incremented_depth_bit_mask = 1 << (bucket->GetDepth());
   auto cur_key_hash_incremented_depth_bit = cur_key_hash & incremented_depth_bit_mask;
-  std::shared_ptr<Bucket> new_bucket = std::make_shared<Bucket>(bucket_size_, bucket->GetDepth()+1);
+  std::shared_ptr<Bucket> new_bucket = std::make_shared<Bucket>(bucket_size_, bucket->GetDepth() + 1);
 
   std::list<K> removal_list;
-  for (std::pair<K, V>& item : bucket->GetItems()) {
+  for (std::pair<K, V> &item : bucket->GetItems()) {
     // Arrange elements separately according to their incremented depth bit
     if ((std::hash<K>()(item.first) & incremented_depth_bit_mask) != cur_key_hash_incremented_depth_bit) {
       new_bucket->Insert(item.first, item.second);
@@ -150,11 +150,11 @@ void ExtendibleHashTable<K, V>::SplitBucket(std::shared_ptr<Bucket> bucket, size
 
   // Now see what are all the indexes in directory where this bucket was being pointed at
   // Find a little smarter way to do this !!! And you will good to go then !!!
-  for (int i=0 ; i <= (1 << (GetGlobalDepthInternal() - bucket->GetDepth())) - 1 ; i++) {
-    size_t idx = (i == 0) ? (dir_index & ( (1 << bucket->GetDepth()) - 1) ) :
-                        ( (i << bucket->GetDepth()) | (dir_index & ( (1 << bucket->GetDepth()) - 1) ) );
+  for (int i = 0; i <= (1 << (GetGlobalDepthInternal() - bucket->GetDepth())) - 1; i++) {
+    size_t idx = (i == 0) ? (dir_index & ((1 << bucket->GetDepth()) - 1))
+                          : ((i << bucket->GetDepth()) | (dir_index & ((1 << bucket->GetDepth()) - 1)));
 
-    if ( (idx & incremented_depth_bit_mask) == cur_key_hash_incremented_depth_bit ) {
+    if ((idx & incremented_depth_bit_mask) == cur_key_hash_incremented_depth_bit) {
       dir_[idx] = bucket;
     } else {
       dir_[idx] = new_bucket;
@@ -172,8 +172,7 @@ ExtendibleHashTable<K, V>::Bucket::Bucket(size_t array_size, int depth) : size_(
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
-
-  for (const std::pair<K, V>& entry : list_) {
+  for (const std::pair<K, V> &entry : list_) {
     if (entry.first == key) {
       value = entry.second;
       return true;
@@ -185,8 +184,7 @@ auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Remove(const K &key) -> bool {
-
-  for (auto entry = list_.begin() ; entry != list_.end() ; entry++) {
+  for (auto entry = list_.begin(); entry != list_.end(); entry++) {
     if (entry->first == key) {
       list_.erase(entry);
       return true;
@@ -198,13 +196,12 @@ auto ExtendibleHashTable<K, V>::Bucket::Remove(const K &key) -> bool {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Bucket::Insert(const K &key, const V &value) -> bool {
-
   if (this->IsFull()) {
     return false;
   }
 
   // Check if the value already exists.
-  for (auto& entry : list_) {
+  for (auto &entry : list_) {
     if (entry.first == key) {
       entry.second = value;
       return true;

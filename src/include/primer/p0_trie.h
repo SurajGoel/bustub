@@ -246,9 +246,7 @@ class Trie {
    * @brief Construct a new Trie object. Initialize the root node with '\0'
    * character.
    */
-  Trie() {
-    root_ = std::make_unique<TrieNode>('\0');
-  }
+  Trie() { root_ = std::make_unique<TrieNode>('\0'); }
 
   /**
    *
@@ -314,7 +312,8 @@ class Trie {
       // Convert this child_node to TrieNodeWithValue and insert it as a child of tmp
       auto new_node = new TrieNodeWithValue(std::move(**child_node), value);
       child_node->reset(new_node);
-//      tmp->get()->InsertChildNode(last_char, std::make_unique<TrieNodeWithValue<T>>(std::move(**child_node), value));
+      //      tmp->get()->InsertChildNode(last_char, std::make_unique<TrieNodeWithValue<T>>(std::move(**child_node),
+      //      value));
 
       latch_.WUnlock();
       return true;
@@ -349,7 +348,7 @@ class Trie {
 
     latch_.WLock();
 
-    std::stack<std::unique_ptr<TrieNode>*> node_stack;
+    std::stack<std::unique_ptr<TrieNode> *> node_stack;
 
     // Traverse to the end of this key
     std::unique_ptr<TrieNode> *tmp = &root_;
@@ -378,13 +377,13 @@ class Trie {
     }
 
     // Now delete the nodes recursively
-    std::unique_ptr<TrieNode>* child_node = node_stack.top();
+    std::unique_ptr<TrieNode> *child_node = node_stack.top();
     node_stack.pop();
-//    LOG_DEBUG("Child node %c", child_node->get()->GetKeyChar());
+    //    LOG_DEBUG("Child node %c", child_node->get()->GetKeyChar());
     while (!node_stack.empty()) {
-      std::unique_ptr<TrieNode>* parent_node = node_stack.top();
+      std::unique_ptr<TrieNode> *parent_node = node_stack.top();
       node_stack.pop();
-//      LOG_DEBUG("Parent node %c", parent_node->get()->GetKeyChar());
+      //      LOG_DEBUG("Parent node %c", parent_node->get()->GetKeyChar());
 
       if (!child_node->get()->HasChildren() && !child_node->get()->IsEndNode()) {
         parent_node->get()->RemoveChildNode(child_node->get()->GetKeyChar());

@@ -123,7 +123,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
 
     inline auto GetItems() -> std::list<std::pair<K, V>> & { return list_; }
 
-    inline auto GetFirstItem() -> K& {return list_.front().first; }
+    inline auto GetFirstItem() -> K & { return list_.front().first; }
 
     /**
      *
