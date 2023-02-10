@@ -187,20 +187,7 @@ class LRUKReplacer {
   };
 
   auto RemoveFrameFromSetInternal(frame_id_t frame_id) -> void;
-
-  //  class FrameAccessHistoryEqualityComparison {
-  //   public:
-  //    auto operator() (const std::shared_ptr<FrameAccessHistory>& frame1,
-  //                    const std::shared_ptr<FrameAccessHistory>& frame2) const {
-  //      return frame1->GetFrameId() == frame2->GetFrameId();
-  //    }
   //  };
-
-  // TODO(student): implement me! You can replace these member variables as you like.
-  // Remove maybe_unused if you start using them.
-  [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
-  size_t replacer_size_;
   size_t k_;
   std::mutex latch_;
   std::unordered_map<frame_id_t, std::shared_ptr<FrameAccessHistory>> frame_index_map_;
