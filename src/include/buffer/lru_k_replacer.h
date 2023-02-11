@@ -192,6 +192,7 @@ class LRUKReplacer {
   std::mutex latch_;
   std::unordered_map<frame_id_t, std::shared_ptr<FrameAccessHistory>> frame_index_map_;
   std::set<std::shared_ptr<FrameAccessHistory>, FrameAccessHistoryOrderComparison> frame_history_set_;
+  size_t replacer_size_;
 };
 
 }  // namespace bustub

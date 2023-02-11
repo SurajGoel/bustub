@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <fstream>
 #include <functional>
 #include <list>
 #include <utility>
@@ -21,17 +22,15 @@
 
 namespace bustub {
 
+
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size) {
-  std::cout << "Hello !!";
   bucket_size_ = bucket_size;
-  dir_.resize(2);
-  global_depth_ = 1;
-  auto bucket1 = std::make_shared<Bucket>(bucket_size, 1);
-  auto bucket2 = std::make_shared<Bucket>(bucket_size, 1);
+  dir_.resize(1);
+  global_depth_ = 0;
+  auto bucket1 = std::make_shared<Bucket>(bucket_size);
   dir_[0] = bucket1;
-  dir_[1] = bucket2;
-  num_buckets_ = 2;
+  num_buckets_ = 1;
 }
 
 template <typename K, typename V>
@@ -134,6 +133,7 @@ void ExtendibleHashTable<K, V>::SplitBucket(std::shared_ptr<Bucket> bucket, size
   auto incremented_depth_bit_mask = 1 << (bucket->GetDepth());
   auto cur_key_hash_incremented_depth_bit = cur_key_hash & incremented_depth_bit_mask;
   std::shared_ptr<Bucket> new_bucket = std::make_shared<Bucket>(bucket_size_, bucket->GetDepth() + 1);
+  num_buckets_++;
 
   std::list<K> removal_list;
   for (std::pair<K, V> &item : bucket->GetItems()) {

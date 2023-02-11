@@ -18,7 +18,7 @@
 
 namespace bustub {
 
-LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
+LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : k_(k), replacer_size_(num_frames) {}
 
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   std::lock_guard<std::mutex> lock(latch_);
@@ -59,7 +59,7 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   auto frame = frame_index_map_.find(frame_id)->second;
   RemoveFrameFromSetInternal(frame_id);
   frame->SetEvictable(set_evictable);
-  if (set_evictable) {
+  if (set_evictable && frame_history_set_.size() < replacer_size_) {
     frame_history_set_.insert(frame);
   }
 }
