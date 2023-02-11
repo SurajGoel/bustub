@@ -56,7 +56,11 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   std::lock_guard<std::mutex> lock(latch_);
-  auto frame = frame_index_map_.find(frame_id)->second;
+  auto frame_itr = frame_index_map_.find(frame_id);
+  if (frame_itr == frame_index_map_.end()) {
+    return;
+  }
+  auto frame = frame_itr->second;
   RemoveFrameFromSetInternal(frame_id);
   frame->SetEvictable(set_evictable);
   if (set_evictable && frame_history_set_.size() < replacer_size_) {

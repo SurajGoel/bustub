@@ -22,7 +22,6 @@
 
 namespace bustub {
 
-
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size) {
   bucket_size_ = bucket_size;

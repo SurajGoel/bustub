@@ -138,13 +138,14 @@ class LRUKReplacer {
  private:
   class FrameAccessHistory {
    public:
-    explicit FrameAccessHistory(frame_id_t frame_id, size_t look_back_size)
-        : look_back_size_(look_back_size), frame_id_(frame_id) {}
+    explicit FrameAccessHistory(frame_id_t frame_id, size_t look_back_size, bool is_evictable = false)
+        : is_evictable_(is_evictable), look_back_size_(look_back_size), frame_id_(frame_id) {}
     void RecordAccess();
     inline auto GetAccessHistorySize() -> size_t { return access_history_.size(); }
     inline auto GetLookBackSize() -> size_t { return look_back_size_; }
     inline auto GetKthAccessRecord() -> int64_t { return access_history_.back(); }
     inline auto GetLRUAccessRecord() -> int64_t { return access_history_.front(); }
+    inline auto GetLastAccessRecord() -> int64_t { return access_history_.back(); }
     inline auto GetFrameId() -> frame_id_t { return frame_id_; }
     inline auto SetEvictable(bool evictable) -> void { is_evictable_ = evictable; }
     inline auto IsEvictable() -> bool { return is_evictable_; }
@@ -176,7 +177,7 @@ class LRUKReplacer {
         return_val = true;
       } else if (!frame2_hist_available && !frame1_hist_available) {
         // LRU case
-        return_val = frame1->GetLRUAccessRecord() <= frame2->GetLRUAccessRecord();
+        return_val = frame1->GetLastAccessRecord() <= frame2->GetLastAccessRecord();
       } else {
         // Both frame's history is available
         return_val = frame1->GetKthAccessRecord() <= frame2->GetKthAccessRecord();
