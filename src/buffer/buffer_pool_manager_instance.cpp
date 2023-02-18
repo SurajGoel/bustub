@@ -29,11 +29,6 @@ BufferPoolManagerInstance::BufferPoolManagerInstance(size_t pool_size, DiskManag
   for (size_t i = 0; i < pool_size_; ++i) {
     free_list_.emplace_back(static_cast<int>(i));
   }
-
-  // TODO(students): remove this line after you have implemented the buffer pool manager
-  throw NotImplementedException(
-      "BufferPoolManager is not implemented yet. If you have finished implementing BPM, please remove the throw "
-      "exception line in `buffer_pool_manager_instance.cpp`.");
 }
 
 BufferPoolManagerInstance::~BufferPoolManagerInstance() {
@@ -174,6 +169,8 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
   existing_page->WLatch();
   FlushPgImpInternal(*existing_page);
   existing_page->WUnlatch();
+
+  return true;
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
@@ -221,7 +218,7 @@ auto BufferPoolManagerInstance::AllocatePage() -> page_id_t {
   return next_page_id_++;
 }
 
-auto BufferPoolManagerInstance::FlushPgImpInternal(Page& page) -> bool {
+void BufferPoolManagerInstance::FlushPgImpInternal(Page& page) {
   disk_manager_->WritePage(page.GetPageId(), page.GetData());
   page.is_dirty_ = false;
 }
