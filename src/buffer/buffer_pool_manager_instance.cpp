@@ -13,6 +13,7 @@
 #include "buffer/buffer_pool_manager_instance.h"
 
 #include "common/exception.h"
+#include "common/logger.h"
 #include "common/macros.h"
 
 namespace bustub {
@@ -38,6 +39,8 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 }
 
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
+
+  LOG_DEBUG("NewPage:");
 
   frame_id_t free_frame_id;
   page_id_t new_page_id;
@@ -92,6 +95,8 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
 
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
 
+  LOG_DEBUG("FetchPage: %d", page_id);
+
   frame_id_t frame_id;
   if (page_table_->Find(page_id, frame_id)) {
     return &pages_[frame_id];
@@ -139,6 +144,8 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
 }
 
 auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
+  LOG_DEBUG("Unpin Page: %d, %d", page_id, is_dirty);
+
   frame_id_t frame_id;
   if (!page_table_->Find(page_id, frame_id)) {
     return false;
@@ -165,6 +172,8 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
 }
 
 auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
+  LOG_DEBUG("FlushPage: %d", page_id);
+
   frame_id_t frame_id;
   if (!page_table_->Find(page_id, frame_id)) {
     return false;
@@ -179,6 +188,8 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
+  LOG_DEBUG("FlushAllPages:");
+
   for (size_t frame_id = 0; frame_id < pool_size_; ++frame_id) {
     Page* page = &pages_[frame_id];
     page->WLatch();
@@ -188,6 +199,8 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
 }
 
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
+  LOG_DEBUG("DeletePage: %d", page_id);
+
   frame_id_t frame_id;
   if (!page_table_->Find(page_id, frame_id)) {
     return true;
