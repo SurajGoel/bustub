@@ -125,6 +125,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     if (existing_page->IsDirty()) {
       FlushPgImpInternal(*existing_page);
     }
+    ResetPageMetadata(*existing_page);
     existing_page->ResetMemory();
     disk_manager_->ReadPage(page_id, existing_page->GetData());
     existing_page->page_id_ = page_id;
@@ -148,7 +149,8 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
   if (existing_page->GetPinCount() <= 0) {
     existing_page->RUnlatch();
     return false;
-  } existing_page->RUnlatch();
+  }
+  existing_page->RUnlatch();
 
   existing_page->WLatch();
   existing_page->pin_count_ = existing_page->GetPinCount() - 1;
@@ -172,11 +174,6 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
   existing_page->WLatch();
   FlushPgImpInternal(*existing_page);
   existing_page->WUnlatch();
-}
-
-auto BufferPoolManagerInstance::FlushPgImpInternal(Page& page) -> bool {
-  disk_manager_->WritePage(page.GetPageId(), page.GetData());
-  page.is_dirty_ = false;
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
@@ -222,6 +219,11 @@ auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
 
 auto BufferPoolManagerInstance::AllocatePage() -> page_id_t {
   return next_page_id_++;
+}
+
+auto BufferPoolManagerInstance::FlushPgImpInternal(Page& page) -> bool {
+  disk_manager_->WritePage(page.GetPageId(), page.GetData());
+  page.is_dirty_ = false;
 }
 
 void BufferPoolManagerInstance::PostSuccessfullPageAllocation(page_id_t page_id, frame_id_t frame_id) {
