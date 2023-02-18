@@ -58,6 +58,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
     ResetPageMetadata(*free_page);
     free_page->ResetMemory();
     free_page->page_id_ = new_page_id;
+    free_page->pin_count_ = 1;
     free_page->WUnlatch();
 
     PostSuccessfullPageAllocation(new_page_id, free_frame_id);
@@ -68,6 +69,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
 
   if (replacer_->Evict(&free_frame_id)) {
     free_page = &pages_[free_frame_id];
+    page_table_->Remove(free_page->GetPageId());
 
     new_page_id = AllocatePage();
     *page_id = new_page_id;
@@ -79,6 +81,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
     ResetPageMetadata(*free_page);
     free_page->ResetMemory();
     free_page->page_id_ = new_page_id;
+    free_page->pin_count_ = 1;
     free_page->WUnlatch();
 
     PostSuccessfullPageAllocation(new_page_id, free_frame_id);
@@ -107,6 +110,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     existing_page->ResetMemory();
     disk_manager_->ReadPage(page_id, existing_page->GetData());
     existing_page->page_id_ = page_id;
+    existing_page->pin_count_ = 1;
     existing_page->WUnlatch();
 
     PostSuccessfullPageAllocation(page_id, frame_id);
@@ -124,6 +128,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     existing_page->ResetMemory();
     disk_manager_->ReadPage(page_id, existing_page->GetData());
     existing_page->page_id_ = page_id;
+    existing_page->pin_count_ = 1;
     existing_page->WUnlatch();
 
     PostSuccessfullPageAllocation(page_id, frame_id);
