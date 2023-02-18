@@ -177,10 +177,10 @@ class BufferPoolManagerInstance : public BufferPoolManager {
   }
 
   // TODO(student): You may add additional private members and helper functions
-  void FlushPgImpInternal(Page& page_id);
+  void FlushPgImpInternal(Page &page_id);
 
   void PostSuccessfullPageAllocation(page_id_t page_id, frame_id_t frame_id);
 
-  void ResetPageMetadata(Page& page);
+  void ResetPageMetadata(Page &page);
 };
 }  // namespace bustub

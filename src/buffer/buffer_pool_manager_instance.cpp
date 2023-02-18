@@ -39,12 +39,11 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 }
 
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
-
   LOG_DEBUG("NewPage:");
 
   frame_id_t free_frame_id;
   page_id_t new_page_id;
-  Page* free_page = nullptr;
+  Page *free_page = nullptr;
 
   latch_.lock();
   if (!free_list_.empty()) {
@@ -68,7 +67,6 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
     return free_page;
   }
   latch_.unlock();
-
 
   if (replacer_->Evict(&free_frame_id)) {
     free_page = &pages_[free_frame_id];
@@ -94,7 +92,6 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
 }
 
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
-
   LOG_DEBUG("FetchPage: %d", page_id);
 
   frame_id_t frame_id;
@@ -110,7 +107,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     free_list_.pop_front();
     latch_.unlock();
 
-    Page* existing_page = &pages_[frame_id];
+    Page *existing_page = &pages_[frame_id];
     existing_page->WLatch();
     existing_page->ResetMemory();
     disk_manager_->ReadPage(page_id, existing_page->GetData());
@@ -124,7 +121,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
   latch_.unlock();
 
   if (replacer_->Evict(&frame_id)) {
-    Page* existing_page = &pages_[frame_id];
+    Page *existing_page = &pages_[frame_id];
     existing_page->WLatch();
     if (existing_page->IsDirty()) {
       FlushPgImpInternal(*existing_page);
@@ -151,7 +148,7 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
     return false;
   }
 
-  Page* existing_page = &pages_[frame_id];
+  Page *existing_page = &pages_[frame_id];
   existing_page->RLatch();
   if (existing_page->GetPinCount() <= 0) {
     existing_page->RUnlatch();
@@ -179,7 +176,7 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
     return false;
   }
 
-  Page* existing_page = &pages_[frame_id];
+  Page *existing_page = &pages_[frame_id];
   existing_page->WLatch();
   FlushPgImpInternal(*existing_page);
   existing_page->WUnlatch();
@@ -191,7 +188,7 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
   LOG_DEBUG("FlushAllPages:");
 
   for (size_t frame_id = 0; frame_id < pool_size_; ++frame_id) {
-    Page* page = &pages_[frame_id];
+    Page *page = &pages_[frame_id];
     page->WLatch();
     FlushPgImpInternal(*page);
     page->WUnlatch();
@@ -206,7 +203,7 @@ auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
     return true;
   }
 
-  Page* existing_page = &pages_[frame_id];
+  Page *existing_page = &pages_[frame_id];
   existing_page->WLatch();
 
   if (existing_page->GetPinCount() > 0) {
@@ -232,11 +229,9 @@ auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
   return true;
 }
 
-auto BufferPoolManagerInstance::AllocatePage() -> page_id_t {
-  return next_page_id_++;
-}
+auto BufferPoolManagerInstance::AllocatePage() -> page_id_t { return next_page_id_++; }
 
-void BufferPoolManagerInstance::FlushPgImpInternal(Page& page) {
+void BufferPoolManagerInstance::FlushPgImpInternal(Page &page) {
   disk_manager_->WritePage(page.GetPageId(), page.GetData());
   page.is_dirty_ = false;
 }
