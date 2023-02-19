@@ -102,7 +102,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
   if (page_table_->Find(page_id, frame_id)) {
     Page *existing_page = &pages_[frame_id];
     existing_page->WLatch();
-    existing_page->pin_count_ = existing_page->pin_count_++;
+    existing_page->pin_count_ = existing_page->GetPinCount() + 1;
     PostSuccessfullPageAllocation(page_id, frame_id);
     existing_page->WUnlatch();
     return existing_page;
@@ -117,10 +117,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     latch_.unlock();
 
     Page *existing_page = &pages_[frame_id];
-    page_table_->Remove(existing_page->GetPageId());
-
     existing_page->WLatch();
-    ResetPageMetadata(*existing_page);
     existing_page->ResetMemory();
     disk_manager_->ReadPage(page_id, existing_page->GetData());
     existing_page->page_id_ = page_id;
@@ -167,8 +164,7 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
 
   Page *existing_page = &pages_[frame_id];
   existing_page->WLatch();
-  if (existing_page->pin_count_ <= 0) {
-//    replacer_->SetEvictable(frame_id, true);
+  if (existing_page->GetPinCount() <= 0) {
     existing_page->WUnlatch();
     return false;
   }
@@ -177,11 +173,14 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
     existing_page->is_dirty_ = is_dirty;
   }
 
-  existing_page->pin_count_ = existing_page->GetPinCount() - 1;
   if (existing_page->GetPinCount() == 0) {
     replacer_->SetEvictable(frame_id, true);
+  } else {
+    existing_page->pin_count_ = existing_page->GetPinCount() - 1;
+    if (existing_page->GetPinCount() == 0) {
+      replacer_->SetEvictable(frame_id, true);
+    }
   }
-
   existing_page->WUnlatch();
 
   return true;
