@@ -43,12 +43,13 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   //  LOG_DEBUG("NewPage:");
   //  std::cout << "NP" << std::endl;
+  std::lock_guard<std::mutex> lock(latch_);
 
   frame_id_t free_frame_id;
   page_id_t new_page_id;
   Page *free_page = nullptr;
 
-  latch_.lock();
+  //  latch_.lock();
   if (!free_list_.empty()) {
     new_page_id = AllocatePage();
     *page_id = new_page_id;
@@ -56,7 +57,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
     free_frame_id = free_list_.front();
     free_page = &pages_[free_frame_id];
     free_list_.pop_front();
-    latch_.unlock();
+    //    latch_.unlock();
 
     // Should take WLock on page first
     free_page->WLatch();
@@ -69,7 +70,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
     PostSuccessfullPageAllocation(new_page_id, free_frame_id);
     return free_page;
   }
-  latch_.unlock();
+  //  latch_.unlock();
 
   if (replacer_->Evict(&free_frame_id)) {
     free_page = &pages_[free_frame_id];
@@ -97,6 +98,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
   //  LOG_DEBUG("FetchPage: %d", page_id);
   //  std::cout << "FP " << page_id << std::endl;
+  std::lock_guard<std::mutex> lock(latch_);
 
   frame_id_t frame_id;
   if (page_table_->Find(page_id, frame_id)) {
@@ -110,11 +112,11 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
 
   // Page is not already present in buffer pool, that means, we need to fetch it from the disk and for that
   // We need to see whether there is an empty frame in freelist or not
-  latch_.lock();
+  //  latch_.lock();
   if (!free_list_.empty()) {
     frame_id = free_list_.front();
     free_list_.pop_front();
-    latch_.unlock();
+    //    latch_.unlock();
 
     Page *existing_page = &pages_[frame_id];
     existing_page->WLatch();
@@ -128,7 +130,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     PostSuccessfullPageAllocation(page_id, frame_id);
     return existing_page;
   }
-  latch_.unlock();
+  //  latch_.unlock();
 
   if (replacer_->Evict(&frame_id)) {
     Page *existing_page = &pages_[frame_id];
@@ -156,6 +158,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
 auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
   //  LOG_DEBUG("Unpin Page: %d, %d", page_id, is_dirty);
   //  std::cout << "UP " << page_id << " " << is_dirty << std::endl;
+  std::lock_guard<std::mutex> lock(latch_);
 
   frame_id_t frame_id;
   if (!page_table_->Find(page_id, frame_id)) {
@@ -189,6 +192,7 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
 auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
   //  LOG_DEBUG("FlushPage: %d", page_id);
   //  std::cout << "FLP " << page_id << std::endl;
+  std::lock_guard<std::mutex> lock(latch_);
 
   frame_id_t frame_id;
   if (!page_table_->Find(page_id, frame_id)) {
@@ -206,6 +210,7 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
 void BufferPoolManagerInstance::FlushAllPgsImp() {
   //  LOG_DEBUG("FlushAllPages:");
   //  std::cout << "FLAP" << std::endl;
+  std::lock_guard<std::mutex> lock(latch_);
 
   for (size_t frame_id = 0; frame_id < pool_size_; ++frame_id) {
     Page *page = &pages_[frame_id];
@@ -218,6 +223,7 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
   //  LOG_DEBUG("DeletePage: %d", page_id);
   //  std::cout << "DP " << page_id << std::endl;
+  std::lock_guard<std::mutex> lock(latch_);
 
   frame_id_t frame_id;
   if (!page_table_->Find(page_id, frame_id)) {
@@ -242,11 +248,11 @@ auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
 
   page_table_->Remove(page_id);
   replacer_->Remove(frame_id);
-  {
-    std::lock_guard<std::mutex> lock(latch_);
-    free_list_.emplace_back(frame_id);
-  }
-
+  //  {
+  //    std::lock_guard<std::mutex> lock(latch_);
+  //    free_list_.emplace_back(frame_id);
+  //  }
+  free_list_.emplace_back(frame_id);
   return true;
 }
 

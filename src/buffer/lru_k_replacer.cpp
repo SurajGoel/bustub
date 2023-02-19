@@ -12,13 +12,11 @@
 
 #include "buffer/lru_k_replacer.h"
 #include <algorithm>
-#include <chrono>
-#include <iostream>
-#include "common/logger.h"
 
 namespace bustub {
 
-LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : k_(k), replacer_size_(num_frames) {}
+LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k)
+    : k_(k), record_causal_relation_addr_(0), replacer_size_(num_frames) {}
 
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   std::lock_guard<std::mutex> lock(latch_);
@@ -42,12 +40,12 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
 
   if (frame == frame_index_map_.end()) {
     auto new_frame = std::make_shared<FrameAccessHistory>(frame_id, k_);
-    new_frame->RecordAccess();
+    new_frame->RecordAccess(record_causal_relation_addr_++);
     frame_index_map_.insert({frame_id, new_frame});
     frame_history_set_.insert(new_frame);
   } else {
     RemoveFrameFromSetInternal(frame_id);
-    frame->second->RecordAccess();
+    frame->second->RecordAccess(record_causal_relation_addr_++);
     if (frame->second->IsEvictable()) {
       frame_history_set_.insert(frame->second);
     }
@@ -102,11 +100,12 @@ auto LRUKReplacer::RemoveFrameFromSetInternal(frame_id_t frame_id) -> void {
 // FrameAccessHistory
 //===--------------------------------------------------------------------===//
 
-void LRUKReplacer::FrameAccessHistory::RecordAccess() {
+void LRUKReplacer::FrameAccessHistory::RecordAccess(int record_access_count_) {
   std::lock_guard<std::mutex> lock(frame_latch_);
 
-  auto duration = std::chrono::system_clock::now().time_since_epoch();
-  auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+  //  int access_record_time = ;
+  //  auto duration = std::chrono::system_clock::now().time_since_epoch();
+  //  auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
 
   // TODO(sgoel): Take lock and perform
   size_t history_size = access_history_.size();
@@ -114,7 +113,7 @@ void LRUKReplacer::FrameAccessHistory::RecordAccess() {
     access_history_.pop_back();
   }
 
-  access_history_.push_front(nanos);
+  access_history_.push_front(record_access_count_);
 }
 
 }  // namespace bustub

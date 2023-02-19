@@ -140,7 +140,7 @@ class LRUKReplacer {
    public:
     explicit FrameAccessHistory(frame_id_t frame_id, size_t look_back_size, bool is_evictable = false)
         : is_evictable_(is_evictable), look_back_size_(look_back_size), frame_id_(frame_id) {}
-    void RecordAccess();
+    void RecordAccess(int record_access_count_);
     inline auto GetAccessHistorySize() -> size_t { return access_history_.size(); }
     inline auto GetLookBackSize() -> size_t { return look_back_size_; }
     inline auto GetKthAccessRecord() -> int64_t { return access_history_.back(); }
@@ -193,6 +193,7 @@ class LRUKReplacer {
   std::mutex latch_;
   std::unordered_map<frame_id_t, std::shared_ptr<FrameAccessHistory>> frame_index_map_;
   std::set<std::shared_ptr<FrameAccessHistory>, FrameAccessHistoryOrderComparison> frame_history_set_;
+  std::atomic<int> record_causal_relation_addr_;
   size_t replacer_size_;
 };
 
