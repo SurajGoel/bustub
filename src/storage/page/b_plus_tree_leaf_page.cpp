@@ -27,16 +27,24 @@ namespace bustub {
  * next page id and set max size
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
+  SetPageId(page_id);
+  SetParentPageId(parent_id);
+  SetMaxSize(max_size);
+  SetSize(0);
+  SetNextPageId(INVALID_PAGE_ID);
+}
 
 /**
  * Helper methods to set/get next page id
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { return INVALID_PAGE_ID; }
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { return next_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
+  next_page_id_ = next_page_id;
+}
 
 /*
  * Helper method to find and return the key associated with input "index"(a.k.a
@@ -45,8 +53,66 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {}
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
   // replace with your own code
-  KeyType key{};
-  return key;
+  return array_[index].first;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ShiftUnderlyingArray(int start_idx, int shift_by) -> void {
+  int elems = GetSize();
+  int temp_array_size = elems - start_idx;
+  std::pair<KeyType, ValueType> temp[temp_array_size];
+
+  for (int i = start_idx ; i < elems ; i++) {
+    temp[i-start_idx].first = array_[i].first;
+    temp[i-start_idx].second = array_[i].second;
+  }
+
+  for (int i=start_idx ; i < elems ; i++) {
+    array_[i+1].first = temp[i-start_idx].first;
+    array_[i+1].second = temp[i-start_idx].second;
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
+  return array_[index].second;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::PutKeyValuePairAt(int idx, const std::pair<KeyType, ValueType> &kv) -> void {
+  array_[idx] = kv;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertKVPairAt(int idx, const std::pair<KeyType, ValueType> &kv)  -> void {
+  ShiftUnderlyingArray(idx, 1);
+  PutKeyValuePairAt(idx, kv);
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindIndexInLeafPageJustGreaterThanKey(const KeyType &key, KeyComparator &comparator) -> int {
+  int low = 0;
+  int high = GetSize() - 1;
+  int result = -1;
+
+  while (low <= high) {
+    int mid = (low + high) / 2;
+    int comparison = comparator(key, KeyAt(mid));
+
+    if (comparison == 0) {
+      return -1;
+    }
+
+    if (comparison == 1) {
+      low = mid + 1;
+    } else {
+      result = mid;
+      high = mid - 1;
+    }
+  }
+
+  return result == -1 ? GetSize() : result;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

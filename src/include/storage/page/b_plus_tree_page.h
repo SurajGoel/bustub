@@ -45,6 +45,7 @@ class BPlusTreePage {
   auto IsLeafPage() const -> bool;
   auto IsRootPage() const -> bool;
   void SetPageType(IndexPageType page_type);
+  inline auto SetIsRootPage(bool is_root_page) -> void { is_root_page_ = is_root_page; }
 
   auto GetSize() const -> int;
   void SetSize(int size);
@@ -62,14 +63,17 @@ class BPlusTreePage {
 
   void SetLSN(lsn_t lsn = INVALID_LSN);
 
+//  virtual void KeyAt(int i) = 0;
+
  private:
   // member variable, attributes that both internal and leaf page share
-  IndexPageType page_type_ __attribute__((__unused__));
+  IndexPageType page_type_;
   lsn_t lsn_ __attribute__((__unused__));
   int size_ __attribute__((__unused__));
   int max_size_ __attribute__((__unused__));
   page_id_t parent_page_id_ __attribute__((__unused__));
   page_id_t page_id_ __attribute__((__unused__));
+  bool is_root_page_;
 };
 
 }  // namespace bustub

@@ -42,6 +42,11 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
 
+  auto InsertKVPairAt(int idx, const std::pair<KeyType, ValueType> &kv) -> void;
+  auto PutKeyValuePairAt(int idx, const std::pair<KeyType, ValueType> &kv) -> void;
+  auto ShiftUnderlyingArray(int start_idx, int shift_by) -> void;
+  auto FindIndexInInternalPageJustGreaterThanKey(const KeyType &key, KeyComparator &comparator) -> int;
+
  private:
   // Flexible array member for page data.
   MappingType array_[1];

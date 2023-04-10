@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <string>
 
 #include "common/exception.h"
@@ -22,6 +23,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
+
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -32,6 +34,31 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction) -> bool {
+  // First let's complete GetValue in here !!
+  auto curr_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_)->GetData());
+  while (!curr_page->IsLeafPage()) {
+    auto curr_page_as_internal = reinterpret_cast<InternalPage *>(curr_page);
+    int i = 1;
+    for (i = 1; i < curr_page_as_internal->GetSize(); i++) {
+      auto curr_key = curr_page_as_internal->KeyAt(i);
+      if (comparator_(key, curr_key) == 1) {
+        break;
+      }
+    }
+    auto next_page_id = curr_page_as_internal->ValueAt(i);
+    curr_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(next_page_id)->GetData());
+  }
+
+  // Now we have got the leaf page where the value should be
+  auto curr_page_as_leaf = reinterpret_cast<LeafPage *>(curr_page);
+  for (int i = 0; i < curr_page_as_leaf->GetSize(); i++) {
+    auto curr_key = curr_page_as_leaf->KeyAt(i);
+    if (comparator_(key, curr_key) == 0) {
+      result->push_back(curr_page_as_leaf->ValueAt(i));
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -47,7 +74,46 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
-  return false;
+
+  if (root_page_id_ == INVALID_PAGE_ID) {
+    auto new_root_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->NewPage(&root_page_id_)->GetData());
+    new_root_page->Init(root_page_id_, INVALID_PAGE_ID, leaf_max_size_);
+    new_root_page->SetPageType(IndexPageType::LEAF_PAGE);
+    new_root_page->SetIsRootPage(true);
+  }
+
+  auto curr_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_)->GetData());
+
+  while (!curr_page->IsLeafPage()) {
+    auto curr_page_as_internal = reinterpret_cast<InternalPage *>(curr_page);
+
+    // Convert the below iteration to binary search
+    int i = 1;
+    for (i = 1; i < curr_page_as_internal->GetSize(); i++) {
+      auto curr_key = curr_page_as_internal->KeyAt(i);
+      if (comparator_(key, curr_key) == 1) {
+        break;
+      }
+    }
+    auto next_page_id = curr_page_as_internal->ValueAt(i);
+
+    curr_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(next_page_id)->GetData());
+  }
+
+  // Now the current page is the leaf page !!
+  auto curr_page_as_leaf = reinterpret_cast<LeafPage *>(curr_page);
+
+  if (curr_page_as_leaf->GetSize() == leaf_max_size_) {
+    return SplitLeafPageAndAddKey(curr_page_as_leaf, key, value);
+  }
+
+  int i = curr_page_as_leaf->FindIndexInLeafPageJustGreaterThanKey(key, comparator_);
+  if (i == -1) {
+    return false;
+  }
+
+  curr_page_as_leaf->InsertKVPairAt(i, std::make_pair(key, value));
+  return true;
 }
 
 /*****************************************************************************
@@ -94,11 +160,111 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); 
  * @return Page id of the root of this tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return 0; }
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
 
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
+
+// move this code to b_plus_tree_leaf_page.cpp
+//INDEX_TEMPLATE_ARGUMENTS
+//auto BPLUSTREE_TYPE::FindIndexInPageJustGreaterThanKey(BPlusTreePage *bPlusTreePage, const KeyType &key) -> int {
+//
+//  bPlusTreePage = reinterpret_cast<InternalPage *>(bPlusTreePage);
+//  bPlusTreePage = bPlusTreePage->IsLeafPage() ? reinterpret_cast<LeafPage *>(bPlusTreePage) : reinterpret_cast<InternalPage *>(bPlusTreePage);
+//
+//  int low = 0;
+//  int high = bPlusTreePage->GetSize() - 1;
+//  int result = -1;
+//
+//  while (low <= high) {
+//    int mid = (low + high) / 2;
+//    int comparison = comparator_(key, bPlusTreePage->KeyAt(mid));
+//
+//    if (comparison == 0) {
+//      return -1;
+//    }
+//
+//    if (comparison == 1) {
+//      low = mid + 1;
+//    } else {
+//      result = mid;
+//      high = mid - 1;
+//    }
+//  }
+//
+//  return result == -1 ? bPlusTreePage->GetSize() : result;
+//}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::SplitLeafPageAndAddKey(BPlusTree::LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t {
+
+  page_id_t new_leaf_page_id;
+  auto new_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->NewPage(&new_leaf_page_id)->GetData());
+  new_leaf_page->Init(new_leaf_page_id, INVALID_PAGE_ID, leaf_max_size_);
+  new_leaf_page->SetPageType(IndexPageType::LEAF_PAGE);
+  new_leaf_page->SetIsRootPage(false);
+
+  int index_to_insert = leafPage->FindIndexInLeafPageJustGreaterThanKey(key, comparator_);
+//  int index_to_insert = FindIndexInLeafPageJustGreaterThanKey(leafPage, key);
+  if (index_to_insert == -1) {
+    return -1;
+  }
+
+  int mid = leafPage->GetSize() / 2;
+  if (index_to_insert > mid) {
+    mid++;
+  }
+
+  int count_being_moved = leafPage->GetSize() - mid;
+  for (int i = mid; i < leafPage->GetSize(); i++) {
+    new_leaf_page->PutKeyValuePairAt(i-mid, std::make_pair(leafPage->KeyAt(i), leafPage->ValueAt(i)));
+  }
+
+  leafPage->SetSize(mid);
+  leafPage->SetNextPageId(new_leaf_page_id);
+  leafPage->SetIsRootPage(false);
+  new_leaf_page->SetSize(count_being_moved);
+
+  index_to_insert <= mid ? leafPage->InsertKVPairAt(index_to_insert, std::make_pair(key, value))
+                         : new_leaf_page->InsertKVPairAt(index_to_insert - mid, std::make_pair(key, value));
+
+  // This seems okay !!! -> Now insert the new leaf page into the parent of leafPage which is an internal page
+  int parent_page_id = leafPage->GetParentPageId();
+  InternalPage *parent_page = nullptr;
+  if (parent_page_id == INVALID_PAGE_ID) {
+    int new_parent_page_id;
+    auto new_parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_parent_page_id)->GetData());
+    new_parent_page->Init(new_parent_page_id, INVALID_PAGE_ID, internal_max_size_);
+    new_parent_page->SetIsRootPage(true);
+    parent_page = new_parent_page;
+    InsertIntoInternalPage(parent_page, leafPage->KeyAt(0), leafPage->GetPageId());
+  } else {
+    parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent_page_id)->GetData());
+  }
+
+  InsertIntoInternalPage(parent_page, new_leaf_page->KeyAt(0), new_leaf_page_id);
+  return new_leaf_page_id;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::InsertIntoInternalPage(InternalPage *internalPage, const KeyType &key, const page_id_t &value) -> bool {
+  if (internalPage->GetSize() == internal_max_size_) {
+    // You can't afford to insert -> which means you will have to split this internal page itself first,
+    // otherwise just find the index where this key should be inserted and insert it there
+
+  }
+
+  int index_to_insert = internalPage->FindIndexInInternalPageJustGreaterThanKey(key, comparator_);
+  if(index_to_insert == -1) {
+    return false;
+  }
+
+  // This is not greater than internal max size, so we can insert in here
+  internalPage->InsertKVPairAt(index_to_insert, std::make_pair(key, value));
+  return true;
+}
+
 /*
  * Update/Insert root page id in header page(where page_id = 0, header_page is
  * defined under include/page/header_page.h)
