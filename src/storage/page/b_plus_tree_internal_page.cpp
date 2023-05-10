@@ -78,14 +78,6 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ShiftUnderlyingArray(int start_idx, int shi
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndexInInternalPageJustGreaterThanKey(const KeyType &key, KeyComparator &comparator) -> int {
 
-//  if (comparator(key, KeyAt(1)) == 1) {
-//    return 0;
-//  }
-//
-//  if (comparator(key, KeyAt(0)) == 0) {
-//    return -1;
-//  }
-
   int low = 1;
   int high = GetSize() - 1;
   int result = -1;

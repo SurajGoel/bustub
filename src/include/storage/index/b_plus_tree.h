@@ -78,8 +78,6 @@ class BPlusTree {
 
   auto InsertIntoInternalPage(InternalPage *internalPage, const KeyType &key, const page_id_t &value) -> bool;
 
-  auto Insert
-
   auto SplitLeafPageAndAddKey(LeafPage* leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
 
   void UpdateRootPageId(int insert_record = 0);

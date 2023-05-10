@@ -30,7 +30,7 @@ namespace bustub {
  * Internal page format (keys are stored in increasing order):
  *  --------------------------------------------------------------------------
  * | HEADER | KEY(1)+PAGE_ID(1) | KEY(2)+PAGE_ID(2) | ... | KEY(n)+PAGE_ID(n) |
- *  --------------------------------------------------------------------------
+ *  -------------------- ------------------------------------------------------
  */
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeInternalPage : public BPlusTreePage {

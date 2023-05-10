@@ -199,17 +199,16 @@ auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::SplitLeafPageAndAddKey(BPlusTree::LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t {
 
+  int index_to_insert = leafPage->FindIndexInLeafPageJustGreaterThanKey(key, comparator_);
+  if (index_to_insert == -1) {
+    return -1;
+  }
+
   page_id_t new_leaf_page_id;
   auto new_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->NewPage(&new_leaf_page_id)->GetData());
   new_leaf_page->Init(new_leaf_page_id, INVALID_PAGE_ID, leaf_max_size_);
   new_leaf_page->SetPageType(IndexPageType::LEAF_PAGE);
   new_leaf_page->SetIsRootPage(false);
-
-  int index_to_insert = leafPage->FindIndexInLeafPageJustGreaterThanKey(key, comparator_);
-//  int index_to_insert = FindIndexInLeafPageJustGreaterThanKey(leafPage, key);
-  if (index_to_insert == -1) {
-    return -1;
-  }
 
   int mid = leafPage->GetSize() / 2;
   if (index_to_insert > mid) {
@@ -238,12 +237,16 @@ auto BPLUSTREE_TYPE::SplitLeafPageAndAddKey(BPlusTree::LeafPage *leafPage, const
     new_parent_page->Init(new_parent_page_id, INVALID_PAGE_ID, internal_max_size_);
     new_parent_page->SetIsRootPage(true);
     parent_page = new_parent_page;
+    parent_page_id = new_parent_page_id;
     InsertIntoInternalPage(parent_page, leafPage->KeyAt(0), leafPage->GetPageId());
   } else {
     parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent_page_id)->GetData());
   }
 
   InsertIntoInternalPage(parent_page, new_leaf_page->KeyAt(0), new_leaf_page_id);
+  leafPage->SetParentPageId(parent_page_id);
+  new_leaf_page->SetParentPageId(parent_page_id);
+
   return new_leaf_page_id;
 }
 
@@ -252,6 +255,10 @@ auto BPLUSTREE_TYPE::InsertIntoInternalPage(InternalPage *internalPage, const Ke
   if (internalPage->GetSize() == internal_max_size_) {
     // You can't afford to insert -> which means you will have to split this internal page itself first,
     // otherwise just find the index where this key should be inserted and insert it there
+
+    // In similar way to leaf page split this and insert into the parent internal page
+    page_id_t new_internal_page_id;
+    auto new_internal_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_internal_page_id)->GetData());
 
   }
 
