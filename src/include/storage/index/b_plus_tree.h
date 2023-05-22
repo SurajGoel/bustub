@@ -79,10 +79,9 @@ class BPlusTree {
   auto InsertIntoInternalPage(InternalPage *internalPage, const KeyType &key, const page_id_t &value) -> bool;
 
   auto SplitLeafPageAndAddKey(LeafPage* leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
+  auto SplitInternalPageAndAddKey(LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
 
   void UpdateRootPageId(int insert_record = 0);
-
-  auto FindIndexInPageJustGreaterThanKey(BPlusTreePage *leafPage, const KeyType &key) -> int;
 
   /* Debug Routines for FREE!! */
   void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ofstream &out) const;

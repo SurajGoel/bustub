@@ -166,35 +166,75 @@ auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
  * UTILITIES AND DEBUG
  *****************************************************************************/
 
-// move this code to b_plus_tree_leaf_page.cpp
-//INDEX_TEMPLATE_ARGUMENTS
-//auto BPLUSTREE_TYPE::FindIndexInPageJustGreaterThanKey(BPlusTreePage *bPlusTreePage, const KeyType &key) -> int {
-//
-//  bPlusTreePage = reinterpret_cast<InternalPage *>(bPlusTreePage);
-//  bPlusTreePage = bPlusTreePage->IsLeafPage() ? reinterpret_cast<LeafPage *>(bPlusTreePage) : reinterpret_cast<InternalPage *>(bPlusTreePage);
-//
-//  int low = 0;
-//  int high = bPlusTreePage->GetSize() - 1;
-//  int result = -1;
-//
-//  while (low <= high) {
-//    int mid = (low + high) / 2;
-//    int comparison = comparator_(key, bPlusTreePage->KeyAt(mid));
-//
-//    if (comparison == 0) {
-//      return -1;
-//    }
-//
-//    if (comparison == 1) {
-//      low = mid + 1;
-//    } else {
-//      result = mid;
-//      high = mid - 1;
-//    }
-//  }
-//
-//  return result == -1 ? bPlusTreePage->GetSize() : result;
-//}
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::InsertIntoInternalPage(InternalPage *internalPage, const KeyType &key, const page_id_t &value) -> bool {
+
+  if (internalPage->GetSize() == internal_max_size_) {
+    // You can't afford to insert -> which means you will have to split this internal page itself first,
+    // otherwise just find the index where this key should be inserted and insert it there
+
+    // In similar way to leaf page split this and insert into the parent internal page
+    page_id_t new_internal_page_id;
+    auto new_internal_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_internal_page_id)->GetData());
+    new_internal_page->Init(new_internal_page_id, INVALID_PAGE_ID, leaf_max_size_);
+    new_internal_page->SetPageType(IndexPageType::INTERNAL_PAGE);
+    new_internal_page->SetIsRootPage(false);
+
+    int index_to_insert = internalPage->FindIndexInInternalPageJustGreaterThanKey(key, comparator_);
+    if(index_to_insert == -1) {
+      return false;
+    }
+
+    int mid = internalPage->GetSize() / 2;
+    if (index_to_insert > mid) {
+      mid++;
+    }
+
+    int count_being_moved = internalPage->GetSize() - mid;
+    for (int i = mid; i < internalPage->GetSize(); i++) {
+      new_internal_page->PutKeyValuePairAt(i-mid, std::make_pair(internalPage->KeyAt(i), internalPage->ValueAt(i)));
+    }
+
+    internalPage->SetSize(mid);
+    internalPage->SetIsRootPage(false);
+    new_internal_page->SetSize(count_being_moved);
+
+    index_to_insert <= mid ? internalPage->InsertKVPairAt(index_to_insert, std::make_pair(key, value))
+                           : new_internal_page->InsertKVPairAt(index_to_insert - mid, std::make_pair(key, value));
+
+
+    // This seems okay !!! -> Now insert the new leaf page into the parent of leafPage which is an internal page
+    int parent_page_id = internalPage->GetParentPageId();
+    InternalPage *parent_page = nullptr;
+    if (parent_page_id == INVALID_PAGE_ID) {
+      int new_parent_page_id;
+      auto new_parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_parent_page_id)->GetData());
+      new_parent_page->Init(new_parent_page_id, INVALID_PAGE_ID, internal_max_size_);
+      new_parent_page->SetIsRootPage(true);
+      parent_page = new_parent_page;
+      parent_page_id = new_parent_page_id;
+      InsertIntoInternalPage(parent_page, internalPage->KeyAt(0), internalPage->GetPageId());
+      internalPage->SetParentPageId(parent_page_id);
+    } else {
+      parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent_page_id)->GetData());
+    }
+
+    InsertIntoInternalPage(parent_page, new_internal_page->KeyAt(0), new_internal_page_id);
+    new_internal_page->SetParentPageId(parent_page_id);
+
+    return true;
+
+  }
+
+  int index_to_insert = internalPage->FindIndexInInternalPageJustGreaterThanKey(key, comparator_);
+  if(index_to_insert == -1) {
+    return false;
+  }
+
+  // This is not greater than internal max size, so we can insert in here
+  internalPage->InsertKVPairAt(index_to_insert, std::make_pair(key, value));
+  return true;
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::SplitLeafPageAndAddKey(BPlusTree::LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t {
@@ -251,25 +291,57 @@ auto BPLUSTREE_TYPE::SplitLeafPageAndAddKey(BPlusTree::LeafPage *leafPage, const
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::InsertIntoInternalPage(InternalPage *internalPage, const KeyType &key, const page_id_t &value) -> bool {
-  if (internalPage->GetSize() == internal_max_size_) {
-    // You can't afford to insert -> which means you will have to split this internal page itself first,
-    // otherwise just find the index where this key should be inserted and insert it there
+auto BPLUSTREE_TYPE::SplitInternalPageAndAddKey(BPlusTree::LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t {
 
-    // In similar way to leaf page split this and insert into the parent internal page
-    page_id_t new_internal_page_id;
-    auto new_internal_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_internal_page_id)->GetData());
-
+  int index_to_insert = leafPage->FindIndexInLeafPageJustGreaterThanKey(key, comparator_);
+  if (index_to_insert == -1) {
+    return -1;
   }
 
-  int index_to_insert = internalPage->FindIndexInInternalPageJustGreaterThanKey(key, comparator_);
-  if(index_to_insert == -1) {
-    return false;
+  page_id_t new_leaf_page_id;
+  auto new_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->NewPage(&new_leaf_page_id)->GetData());
+  new_leaf_page->Init(new_leaf_page_id, INVALID_PAGE_ID, leaf_max_size_);
+  new_leaf_page->SetPageType(IndexPageType::LEAF_PAGE);
+  new_leaf_page->SetIsRootPage(false);
+
+  int mid = leafPage->GetSize() / 2;
+  if (index_to_insert > mid) {
+    mid++;
   }
 
-  // This is not greater than internal max size, so we can insert in here
-  internalPage->InsertKVPairAt(index_to_insert, std::make_pair(key, value));
-  return true;
+  int count_being_moved = leafPage->GetSize() - mid;
+  for (int i = mid; i < leafPage->GetSize(); i++) {
+    new_leaf_page->PutKeyValuePairAt(i-mid, std::make_pair(leafPage->KeyAt(i), leafPage->ValueAt(i)));
+  }
+
+  leafPage->SetSize(mid);
+  leafPage->SetNextPageId(new_leaf_page_id);
+  leafPage->SetIsRootPage(false);
+  new_leaf_page->SetSize(count_being_moved);
+
+  index_to_insert <= mid ? leafPage->InsertKVPairAt(index_to_insert, std::make_pair(key, value))
+                         : new_leaf_page->InsertKVPairAt(index_to_insert - mid, std::make_pair(key, value));
+
+  // This seems okay !!! -> Now insert the new leaf page into the parent of leafPage which is an internal page
+  int parent_page_id = leafPage->GetParentPageId();
+  InternalPage *parent_page = nullptr;
+  if (parent_page_id == INVALID_PAGE_ID) {
+    int new_parent_page_id;
+    auto new_parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->NewPage(&new_parent_page_id)->GetData());
+    new_parent_page->Init(new_parent_page_id, INVALID_PAGE_ID, internal_max_size_);
+    new_parent_page->SetIsRootPage(true);
+    parent_page = new_parent_page;
+    parent_page_id = new_parent_page_id;
+    InsertIntoInternalPage(parent_page, leafPage->KeyAt(0), leafPage->GetPageId());
+  } else {
+    parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent_page_id)->GetData());
+  }
+
+  InsertIntoInternalPage(parent_page, new_leaf_page->KeyAt(0), new_leaf_page_id);
+  leafPage->SetParentPageId(parent_page_id);
+  new_leaf_page->SetParentPageId(parent_page_id);
+
+  return new_leaf_page_id;
 }
 
 /*
