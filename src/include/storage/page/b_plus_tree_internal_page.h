@@ -42,13 +42,20 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
 
+  auto AddKVPair(const std::pair<KeyType, ValueType> &kv) -> void;
   auto InsertKVPairAt(int idx, const std::pair<KeyType, ValueType> &kv) -> void;
   auto PutKeyValuePairAt(int idx, const std::pair<KeyType, ValueType> &kv) -> void;
   auto ShiftUnderlyingArray(int start_idx, int shift_by) -> void;
   auto FindIndexInInternalPageJustGreaterThanKey(const KeyType &key, KeyComparator &comparator) -> int;
+  auto RemoveAtIndex(int index) -> bool;
+  auto FindNextPageId(page_id_t curr_page_id) -> page_id_t;
+  auto FindPreviousPageId(page_id_t curr_page_id) -> page_id_t;
+  auto RemovePageId(page_id_t curr_page_id) -> bool;
 
  private:
+
   // Flexible array member for page data.
   MappingType array_[1];
 };
+
 }  // namespace bustub

@@ -84,6 +84,14 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::PutKeyValuePairAt(int idx, const std::pair<KeyT
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::AddKVPair(const std::pair<KeyType, ValueType> &kv)  -> void {
+  int idx = GetSize();
+  ShiftUnderlyingArray(idx, 1);
+  PutKeyValuePairAt(idx, kv);
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertKVPairAt(int idx, const std::pair<KeyType, ValueType> &kv)  -> void {
   ShiftUnderlyingArray(idx, 1);
   PutKeyValuePairAt(idx, kv);
@@ -113,6 +121,18 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindIndexInLeafPageJustGreaterThanKey(const Key
   }
 
   return result == -1 ? GetSize() : result;
+}
+
+template <typename KeyType, typename ValueType, typename KeyComparator>
+auto BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>::RemoveAtIndex(int index) -> bool {
+
+  for (int i=index+1 ; i < GetSize() ; i++) {
+    array_[i-1].first = array_[i].first;
+    array_[i-1].second = array_[i].second;
+  }
+  SetSize(GetSize()-1);
+
+  return true;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

@@ -102,6 +102,14 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndexInInternalPageJustGreaterThanKey(c
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::AddKVPair(const std::pair<KeyType, ValueType> &kv) -> void {
+  int idx = GetSize();
+  ShiftUnderlyingArray(idx, 1);
+  PutKeyValuePairAt(idx, kv);
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertKVPairAt(int idx,const std::pair<KeyType, ValueType> &kv) -> void {
   ShiftUnderlyingArray(idx, 1);
   PutKeyValuePairAt(idx, kv);
@@ -113,10 +121,72 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::PutKeyValuePairAt(int idx, const std::pair<
   array_[idx] = kv;
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>::RemoveAtIndex(int index) -> bool {
+
+  if (index < 0 || index >= GetSize()) {
+    return false;
+  }
+
+  for (int i=index+1 ; i < GetSize() ; i++) {
+    array_[i-1].first = array_[i].first;
+    array_[i-1].second = array_[i].second;
+  }
+  SetSize(GetSize()-1);
+
+  return true;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindNextPageId(page_id_t curr_page_id) -> page_id_t {
+
+  int next_page_id = INVALID_PAGE_ID;
+  for (int idx=0 ; idx < GetSize() ; idx++) {
+    if (array_[idx].second == curr_page_id) {
+      if (idx <= GetSize() - 1) {
+        next_page_id = array_[idx+1].second;
+        break;
+      }
+    }
+  }
+
+  return next_page_id;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindPreviousPageId(page_id_t curr_page_id) -> page_id_t {
+
+  int prev_page_id = INVALID_PAGE_ID;
+  for (int idx=0 ; idx < GetSize() ; idx++) {
+    if (array_[idx].second == curr_page_id) {
+      if (idx > 0) {
+        prev_page_id = array_[idx-1].second;
+        break;
+      }
+    }
+  }
+
+  return prev_page_id;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemovePageId(page_id_t curr_page_id) -> bool {
+
+  // From the internal page, find the curr page id and the corresponding index, and then call RemoveAtIndex with that index as the argument
+  for (int i=0 ; i<GetSize() ; i++) {
+    if (ValueAt(i) == curr_page_id) {
+      return RemoveAtIndex(i);
+    }
+  }
+
+  return false;
+}
+
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
 template class BPlusTreeInternalPage<GenericKey<8>, page_id_t, GenericComparator<8>>;
 template class BPlusTreeInternalPage<GenericKey<16>, page_id_t, GenericComparator<16>>;
 template class BPlusTreeInternalPage<GenericKey<32>, page_id_t, GenericComparator<32>>;
 template class BPlusTreeInternalPage<GenericKey<64>, page_id_t, GenericComparator<64>>;
+
 }  // namespace bustub

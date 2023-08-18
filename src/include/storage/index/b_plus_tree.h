@@ -80,6 +80,12 @@ class BPlusTree {
 
   auto SplitLeafPageAndAddKey(LeafPage* leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
   auto SplitInternalPageAndAddKey(LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
+  auto InsertAndUpdateParentPage(InternalPage *insertTo, int idx, const KeyType &key, const page_id_t &value);
+  auto CoalesceLeafNode(LeafPage *leafPage) -> bool;
+  auto CoalesceInternalNode(InternalPage *internalPage) -> bool ;
+  auto MergeLeafNode(LeafPage* fromLeafPage, LeafPage* toLeafPage) -> bool;
+  auto MergeInternalNode(InternalPage *fromPage, InternalPage *toPage) -> bool;
+  auto RemoveFromParentPage(BPlusTreePage *bPlusTreePage) -> bool;
 
   void UpdateRootPageId(int insert_record = 0);
 
@@ -87,7 +93,6 @@ class BPlusTree {
   void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ofstream &out) const;
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
-
   // member variable
   std::string index_name_;
   page_id_t root_page_id_;
@@ -96,5 +101,6 @@ class BPlusTree {
   int leaf_max_size_;
   int internal_max_size_;
 };
+
 
 }  // namespace bustub
