@@ -182,19 +182,23 @@ auto BPlusTree<KeyType, ValueType, KeyComparator>::CoalesceLeafNode(BPlusTree::L
   auto parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(leafPage->GetParentPageId())->GetData());
 
   page_id_t right_leaf_page_id = parent_page->FindNextPageId(leafPage->GetPageId());
-  auto right_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(right_leaf_page_id)->GetData());
-  if (right_leaf_page->GetSize() + leafPage->GetSize() < leaf_max_size_) {
-    MergeLeafNode(right_leaf_page, leafPage);
-    RemoveFromParentPage(right_leaf_page);
-    return true;
+  if (right_leaf_page_id != INVALID_PAGE_ID) {
+    auto right_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(right_leaf_page_id)->GetData());
+    if (right_leaf_page->GetSize() + leafPage->GetSize() <= leaf_max_size_) {
+      MergeLeafNode(right_leaf_page, leafPage);
+      RemoveFromParentPage(right_leaf_page);
+      return true;
+    }
   }
 
   page_id_t left_leaf_page_id = parent_page->FindPreviousPageId(leafPage->GetPageId());
-  auto left_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(left_leaf_page_id)->GetData());
-  if (left_leaf_page->GetSize() + leafPage->GetSize() < leaf_max_size_) {
-    MergeLeafNode(leafPage, left_leaf_page);
-    RemoveFromParentPage(leafPage);
-    return true;
+  if (left_leaf_page_id != INVALID_PAGE_ID) {
+    auto left_leaf_page = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(left_leaf_page_id)->GetData());
+    if (left_leaf_page->GetSize() + leafPage->GetSize() <= leaf_max_size_) {
+      MergeLeafNode(leafPage, left_leaf_page);
+      RemoveFromParentPage(leafPage);
+      return true;
+    }
   }
 
   return true;
@@ -203,7 +207,7 @@ auto BPlusTree<KeyType, ValueType, KeyComparator>::CoalesceLeafNode(BPlusTree::L
 INDEX_TEMPLATE_ARGUMENTS
 auto BPlusTree<KeyType, ValueType, KeyComparator>::CoalesceInternalNode(BPlusTree::InternalPage *internalPage) -> bool {
 
-  if (internalPage->GetSize() >= internalPage->GetMaxSize() / 2) {
+  if (internalPage->GetSize() > internalPage->GetMaxSize() / 2 || internalPage->IsRootPage()) {
     return false;
   }
 
@@ -212,14 +216,14 @@ auto BPlusTree<KeyType, ValueType, KeyComparator>::CoalesceInternalNode(BPlusTre
   page_id_t right_page_id = parent_page->FindNextPageId(internalPage->GetPageId());
   auto right_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(right_page_id)->GetData());
 
-  if (right_page->GetSize() + internalPage->GetSize() < internal_max_size_) {
+  if (right_page->GetSize() + internalPage->GetSize() <= internal_max_size_) {
     MergeInternalNode(right_page, internalPage);
     return RemoveFromParentPage(right_page);
   }
 
   page_id_t left_page_id = parent_page->FindPreviousPageId(internalPage->GetPageId());
   auto left_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(left_page_id)->GetData());
-  if (left_page->GetSize() + internalPage->GetSize() < internal_max_size_) {
+  if (left_page->GetSize() + internalPage->GetSize() <= internal_max_size_) {
     MergeInternalNode(internalPage, left_page);
     return RemoveFromParentPage(internalPage);
   }
@@ -485,6 +489,9 @@ auto BPLUSTREE_TYPE::MergeInternalNode(BPlusTree::InternalPage *fromPage,
 
   for (int i=0 ; i<fromPage->GetSize() ; i++) {
     toPage->AddKVPair(std::make_pair(fromPage->KeyAt(i), fromPage->ValueAt(i)));
+    auto child_page_id = fromPage->ValueAt(i);
+    auto child_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(child_page_id)->GetData());
+    child_page->SetParentPageId(toPage->GetPageId());
   }
 
   return true;
@@ -497,7 +504,9 @@ auto BPLUSTREE_TYPE::RemoveFromParentPage(BPlusTreePage *bPlusTreePage) -> bool 
   auto parent_page = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent_page_id)->GetData());
 
   if (parent_page->RemovePageId(bPlusTreePage->GetPageId())) {
-    return CoalesceInternalNode(parent_page);
+    bool did_coalesce_internal_node = CoalesceInternalNode(parent_page);
+    buffer_pool_manager_->DeletePage(bPlusTreePage->GetPageId());
+    return did_coalesce_internal_node;
   }
 
   return false;
