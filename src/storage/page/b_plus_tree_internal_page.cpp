@@ -27,11 +27,11 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
-    this->SetPageId(page_id);
-    this->SetParentPageId(parent_id);
-    this->SetMaxSize(max_size);
-    this->SetPageType(IndexPageType::INTERNAL_PAGE);
-    this->SetSize(0);
+  this->SetPageId(page_id);
+  this->SetParentPageId(parent_id);
+  this->SetMaxSize(max_size);
+  this->SetPageType(IndexPageType::INTERNAL_PAGE);
+  this->SetSize(0);
 }
 
 /*
@@ -39,9 +39,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
  * array offset)
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
-  return array_[index].first;
-}
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType { return array_[index].first; }
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
@@ -54,9 +52,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
  * offset)
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  return array_[index].second;
-}
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ShiftUnderlyingArray(int start_idx, int shift_by) -> void {
@@ -64,20 +60,20 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ShiftUnderlyingArray(int start_idx, int shi
   int temp_array_size = elems - start_idx;
   std::pair<KeyType, ValueType> temp[temp_array_size];
 
-  for (int i = start_idx ; i < elems ; i++) {
-    temp[i-start_idx].first = array_[i].first;
-    temp[i-start_idx].second = array_[i].second;
+  for (int i = start_idx; i < elems; i++) {
+    temp[i - start_idx].first = array_[i].first;
+    temp[i - start_idx].second = array_[i].second;
   }
 
-  for (int i=start_idx ; i < elems ; i++) {
-    array_[i+1].first = temp[i-start_idx].first;
-    array_[i+1].second = temp[i-start_idx].second;
+  for (int i = start_idx; i < elems; i++) {
+    array_[i + 1].first = temp[i - start_idx].first;
+    array_[i + 1].second = temp[i - start_idx].second;
   }
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndexInInternalPageJustGreaterThanKey(const KeyType &key, KeyComparator &comparator) -> int {
-
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindIndexInInternalPageJustGreaterThanKey(const KeyType &key,
+                                                                               KeyComparator &comparator) -> int {
   int low = 1;
   int high = GetSize() - 1;
   int result = -1;
@@ -110,7 +106,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::AddKVPair(const std::pair<KeyType, ValueTyp
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertKVPairAt(int idx,const std::pair<KeyType, ValueType> &kv) -> void {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertKVPairAt(int idx, const std::pair<KeyType, ValueType> &kv) -> void {
   ShiftUnderlyingArray(idx, 1);
   PutKeyValuePairAt(idx, kv);
   IncreaseSize(1);
@@ -123,28 +119,26 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::PutKeyValuePairAt(int idx, const std::pair<
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>::RemoveAtIndex(int index) -> bool {
-
   if (index < 0 || index >= GetSize()) {
     return false;
   }
 
-  for (int i=index+1 ; i < GetSize() ; i++) {
-    array_[i-1].first = array_[i].first;
-    array_[i-1].second = array_[i].second;
+  for (int i = index + 1; i < GetSize(); i++) {
+    array_[i - 1].first = array_[i].first;
+    array_[i - 1].second = array_[i].second;
   }
-  SetSize(GetSize()-1);
+  SetSize(GetSize() - 1);
 
   return true;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindNextPageId(page_id_t curr_page_id) -> page_id_t {
-
   int next_page_id = INVALID_PAGE_ID;
-  for (int idx=0 ; idx < GetSize() ; idx++) {
+  for (int idx = 0; idx < GetSize(); idx++) {
     if (array_[idx].second == curr_page_id) {
       if (idx <= GetSize() - 1) {
-        next_page_id = array_[idx+1].second;
+        next_page_id = array_[idx + 1].second;
         break;
       }
     }
@@ -155,12 +149,11 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindNextPageId(page_id_t curr_page_id) -> p
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindPreviousPageId(page_id_t curr_page_id) -> page_id_t {
-
   int prev_page_id = INVALID_PAGE_ID;
-  for (int idx=0 ; idx < GetSize() ; idx++) {
+  for (int idx = 0; idx < GetSize(); idx++) {
     if (array_[idx].second == curr_page_id) {
       if (idx > 0) {
-        prev_page_id = array_[idx-1].second;
+        prev_page_id = array_[idx - 1].second;
         break;
       }
     }
@@ -171,9 +164,9 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindPreviousPageId(page_id_t curr_page_id) 
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemovePageId(page_id_t curr_page_id) -> bool {
-
-  // From the internal page, find the curr page id and the corresponding index, and then call RemoveAtIndex with that index as the argument
-  for (int i=0 ; i<GetSize() ; i++) {
+  // From the internal page, find the curr page id and the corresponding index, and then call RemoveAtIndex with that
+  // index as the argument
+  for (int i = 0; i < GetSize(); i++) {
     if (ValueAt(i) == curr_page_id) {
       return RemoveAtIndex(i);
     }

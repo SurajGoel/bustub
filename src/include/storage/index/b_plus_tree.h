@@ -75,15 +75,14 @@ class BPlusTree {
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
  private:
-
   auto InsertIntoInternalPage(InternalPage *internalPage, const KeyType &key, const page_id_t &value) -> bool;
 
-  auto SplitLeafPageAndAddKey(LeafPage* leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
+  auto SplitLeafPageAndAddKey(LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
   auto SplitInternalPageAndAddKey(LeafPage *leafPage, const KeyType &key, const ValueType &value) -> page_id_t;
   auto InsertAndUpdateParentPage(InternalPage *insertTo, int idx, const KeyType &key, const page_id_t &value);
   auto CoalesceLeafNode(LeafPage *leafPage) -> bool;
-  auto CoalesceInternalNode(InternalPage *internalPage) -> bool ;
-  auto MergeLeafNode(LeafPage* fromLeafPage, LeafPage* toLeafPage) -> bool;
+  auto CoalesceInternalNode(InternalPage *internalPage) -> bool;
+  auto MergeLeafNode(LeafPage *fromLeafPage, LeafPage *toLeafPage) -> bool;
   auto MergeInternalNode(InternalPage *fromPage, InternalPage *toPage) -> bool;
   auto RemoveFromParentPage(BPlusTreePage *bPlusTreePage) -> bool;
 
@@ -101,6 +100,5 @@ class BPlusTree {
   int leaf_max_size_;
   int internal_max_size_;
 };
-
 
 }  // namespace bustub

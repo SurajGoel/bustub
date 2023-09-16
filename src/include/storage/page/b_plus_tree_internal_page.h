@@ -11,6 +11,7 @@
 #pragma once
 
 #include <queue>
+#include <utility>
 
 #include "storage/page/b_plus_tree_page.h"
 
@@ -53,7 +54,6 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto RemovePageId(page_id_t curr_page_id) -> bool;
 
  private:
-
   // Flexible array member for page data.
   MappingType array_[1];
 };
